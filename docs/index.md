@@ -14,10 +14,12 @@ The Sections are organized as follows.
 
 ## Prerequisites
 
-- OpenShift Cluster (4.10+) with OLM
+- OpenShift Cluster (4.10+)
 - cluster-admin login
 - helm3
 - openssl
+- jq
+- Java 17, maven
 
 ## References
 

@@ -25,7 +25,7 @@ export VAULT_SKIP_VERIFY=true
 Login to OpenShift from the CLI using a `cluster-admin` user.
 
 ```bash
-oc login --server=https://api.${BASE_DOMAIN}:6443 -u <user>
+oc login --server=https://api.${BASE_DOMAIN}:6443 -u <admin>
 ```
 
 ## Install Cert Manager
@@ -221,11 +221,10 @@ spec:
 EOF
 ```
 
-You can inspect the `data:` section of the cert which contains the generated certificate details.
+You can inspect the `data:` section of the cert secret which contains the generated certificate details (`ca.crt`, `tls.crt`, `tls.key`).
 
 ```bash
-$ oc get secret vault-certs -o yaml
-...
+oc get secret vault-certs -o jsonpath='{.data}' | jq .
 ```
 
 ## Install Vault
@@ -240,7 +239,7 @@ helm repo update
 Create a default values file:
 - HA 3 node vault cluster
 - Uses the Hashicorp UBI images (you can get enterprise support from Hashicorp - use `vault-enterprise`) - check [here](https://catalog.redhat.com/software/containers) for latest versions
-- audit storage configured
+- audit storage configured (adjust the disk size accordingly)
 
 ```bash
 mkdir -p ${CERT_ROOT}/vault && cd ${CERT_ROOT}/vault
@@ -271,7 +270,7 @@ server:
     enabled: false
   auditStorage:
     enabled: true
-    size: 15Gi
+    size: 5Gi
   extraVolumes:
     - type: "secret"
       name: "vault-certs"
@@ -365,12 +364,14 @@ Export these in our environment for now for ease of use.
 ```bash
 export ROOT_TOKEN=this-is-not-my-token
 export UNSEAL_KEY=this-is-not-my-key
-``
+```
+
+Unseal each node in the cluster.
 
 ```bash
-oc -n hashicorp exec -ti vault-0 -- vault operator unseal $UNSEAL_KEY
-oc -n hashicorp exec -ti vault-1 -- vault operator unseal $UNSEAL_KEY
-oc -n hashicorp exec -ti vault-2 -- vault operator unseal $UNSEAL_KEY
+for x in `seq 0 2`; do
+  oc -n hashicorp exec -ti vault-$x -- vault operator unseal $UNSEAL_KEY
+done
 ```
 
 And all pods are running and now ready once you have unsealed all the vault nodes.
@@ -382,4 +383,14 @@ vault-0                                1/1     Running   0          5m40s
 vault-1                                1/1     Running   0          5m40s
 vault-2                                1/1     Running   0          5m40s
 vault-agent-injector-68df5cdbc-4jnrr   1/1     Running   0          5m40s
+```
+
+## Vault CLI
+
+Grab the [vault cli](https://learn.hashicorp.com/tutorials/vault/getting-started-install?in=vault/getting-started) 
+
+```bash
+wget https://releases.hashicorp.com/vault/1.10.3/vault_1.10.3_linux_amd64.zip
+unzip vault_1.10.3_linux_amd64.zip
+sudo mv vault /usr/local/bin/vault && sudo chmod 755 /usr/local/bin/vault
 ```

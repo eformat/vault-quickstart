@@ -1,6 +1,17 @@
 # Application
 
+We are going to deploy a Quarkus application that can test CRUDL based calls to vault using k8s based authentication.
+
+Login using our team user `mike`.
+
+```bash
+oc login --server=https://api.${BASE_DOMAIN}:6443 -u mike
+vault login -method=ldap username=mike
+```
+
 ## Build
+
+Build our application locally.
 
 ```bash
 mvn package -Dquarkus.package.type=fast-jar -DskipTests
@@ -8,33 +19,32 @@ mvn package -Dquarkus.package.type=fast-jar -DskipTests
 
 ## Deploy
 
-```bash
-mvn oc:build oc:resource oc:apply \
- -Djkube.namespace=$PROJECT_NAME \
- -Dbase.domain=$BASE_DOMAIN
-```
+Deploy into OpenShift. This uses jkube.
 
 ```bash
-export SA_TOKEN=$(oc -n ${PROJECT_NAME} get sa/${APP_NAME} -o yaml | grep ${APP_NAME}-token | awk '{print $3}')
-export SA_JWT_TOKEN=$(oc -n ${PROJECT_NAME} get secret $SA_TOKEN -o jsonpath="{.data.token}" | base64 --decode; echo)
-export SA_CA_CRT=$(oc -n ${PROJECT_NAME} get secret $SA_TOKEN -o jsonpath="{.data['ca\.crt']}" | base64 --decode; echo)
-vault write auth/$BASE_DOMAIN-${PROJECT_NAME}/config \
-  token_reviewer_jwt="$SA_JWT_TOKEN" \
-  kubernetes_host="$(oc whoami --show-server)" \
-  kubernetes_ca_cert="$SA_CA_CRT"
+mvn oc:build oc:resource oc:apply \
+  -Djkube.namespace=$PROJECT_NAME \
+  -Dbase.domain=$BASE_DOMAIN
 ```
 
 ## Test
 
-V1 Secret
+Make sure $APP_NAME is set.
+
+```bash
+export APP_NAME=vault-quickstart
+```
+
+Read version 1 of our KV secret.
 
 ```bash
 curl -sk -w"\n" https://$(oc get route $APP_NAME --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
 
+# output
 {app=vault-quickstart, password=bar, username=foo}
 ```
 
-V2 Secret
+Let's create a version 2 of our KV secret.
 
 ```bash
 vault kv put kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME \
@@ -44,53 +54,66 @@ vault kv put kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME \
 
 curl -sk -w"\n" https://$(oc get route $APP_NAME --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
 
+# output
 {app=vault-quickstart, password=abc, username=cab}
 ```
 
-Lookup another application's secret (Not Allowed)
+Let's try and lookup another application's secret using our deployed app. This will **not be allowed** by ACL template policy.
+
+Create the new secret for a new app in the same project.
 
 ```bash
-oc login --server=https://api.${BASE_DOMAIN}:6443 -u mike
-vault login -method=ldap username=mike
-vault token lookup
-
 export APP_NAME=another-app
 
 vault kv put kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME \
   app=$APP_NAME \
-  username=cab \
-  password=abc
-
-curl -sk -w"\n" https://$(oc get route vault-quickstart --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
-
-# k8s app sa can only get secrets at kv/student/foo/vault-quickstart
-# due to vault ACL policy
-{"details":"Error id d47c2c4c-0893-4652-b2bd-f9dcb0ab8dfe-2","stack":""}
-Caused by: io.quarkus.vault.runtime.client.VaultClientException code=403 body={"errors":["1 error occurred:\n\t* permission denied\n\n"]}
-
-export APP_NAME=vault-quickstart
-curl -sk -w"\n" https://$(oc get route $APP_NAME --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
-
-{app=vault-quickstart, password=bar, username=foo}
+  username=baz \
+  password=jaz
 ```
 
-Delete a secret (Not Allowed) ACL policy denies this to the app sa
+Now try to read it.
 
 ```bash
+curl -sk -w"\n" https://$(oc get route vault-quickstart --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
+
+# error returned
+{"details":"Error id d47c2c4c-0893-4652-b2bd-f9dcb0ab8dfe-2","stack":""}
+```
+
+If we check the pod logs we see a `403 permission denied`
+
+```bash
+oc logs $(oc get pods -l app=vault-quickstart -o name) | grep -A1 ERROR
+
+# output
+ERROR: HTTP Request to /kv/student/foo-apps/another-app failed, error id: b0cbc303-0a76-4b0c-a276-509963bc5259-1
+org.jboss.resteasy.spi.UnhandledException: io.quarkus.vault.runtime.client.VaultClientException code=403 body={"errors":["1 error occurred:\n\t* permission denied\n\n"]}
+
+```
+
+Let's try and `Delete` a secret. This will **not be allowed** by ACL template policy.
+
+```bash
+export APP_NAME=vault-quickstart
+
 curl -X DELETE -sk -w"\n" https://$(oc get route $APP_NAME --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
 
 {"details":"Error id cb28d8e2-4ff2-4a14-b110-884489b36e00-2","stack":""}
 ```
 
-We could update the $BASE_DOMAIN-$PROJECT_NAME-kv-read policy with "delete" just to make sure
-
-![images/acl-delete-test.png](images/acl-delete-test.png)
+Let's manully update the $BASE_DOMAIN-$PROJECT_NAME-kv-read policy with "delete" just to make sure.
 
 ```bash
 capabilities=["read","list","delete"]
-
-curl -X DELETE -sk -w"\n" https://$(oc get route $APP_NAME --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
-
-Secret: student/bar/vault-quickstart deleted
 ```
 
+![images/acl-delete-test.png](images/acl-delete-test.png)
+
+And retest.
+
+```bash
+curl -X DELETE -sk -w"\n" https://$(oc get route $APP_NAME --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
+
+# output
+Secret: student/foo-apps/vault-quickstart deleted
+```
