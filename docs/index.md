@@ -25,13 +25,13 @@ The Sections are organized as follows.
 
 Handy links found along the way
 
-- https://www.vaultproject.io/docs
-- https://cloud.redhat.com/blog/how-to-secure-cloud-native-applications-with-hashicorp-vault-and-cert-manager
-- https://external-secrets.io/v0.5.3/provider-hashicorp-vault
-- https://learn.hashicorp.com/tutorials/vault/policy-templating
-- https://www.youtube.com/watch?v=zDnIqSB4tyA&t=1532s
-- https://learn.hashicorp.com/tutorials/vault/pattern-policy-templates?in=vault/recommended-patterns
-- https://learn.hashicorp.com/tutorials/vault/namespace-structure?in=vault/recommended-patterns
-- https://github.com/hashicorp/vault-guides.git
-- https://quarkiverse.github.io/quarkiverse-docs/quarkus-vault/dev/vault-auth.html#_kubernetes_authentication
-- https://cert-manager.io/docs
+- [https://www.vaultproject.io/docs](https://www.vaultproject.io/docs)
+- [https://cloud.redhat.com/blog/how-to-secure-cloud-native-applications-with-hashicorp-vault-and-cert-manager](https://cloud.redhat.com/blog/how-to-secure-cloud-native-applications-with-hashicorp-vault-and-cert-manager)
+- [https://external-secrets.io/v0.5.3/provider-hashicorp-vault](https://external-secrets.io/v0.5.3/provider-hashicorp-vault)
+- [https://learn.hashicorp.com/tutorials/vault/policy-templating](https://learn.hashicorp.com/tutorials/vault/policy-templating)
+- [https://www.youtube.com/watch?v=zDnIqSB4tyA&t=1532s](https://www.youtube.com/watch?v=zDnIqSB4tyA&t=1532s)
+- [https://learn.hashicorp.com/tutorials/vault/pattern-policy-templates?in=vault/recommended-patterns](https://learn.hashicorp.com/tutorials/vault/pattern-policy-templates?in=vault/recommended-patterns)
+- [https://learn.hashicorp.com/tutorials/vault/namespace-structure?in=vault/recommended-patterns](https://learn.hashicorp.com/tutorials/vault/namespace-structure?in=vault/recommended-patterns)
+- [https://github.com/hashicorp/vault-guides.git](https://github.com/hashicorp/vault-guides.git)
+- [https://quarkiverse.github.io/quarkiverse-docs/quarkus-vault/dev/vault-auth.html#_kubernetes_authentication](https://quarkiverse.github.io/quarkiverse-docs/quarkus-vault/dev/vault-auth.html#_kubernetes_authentication)
+- [https://cert-manager.io/docs](https://cert-manager.io/docs)
