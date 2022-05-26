@@ -22,3 +22,8 @@ plugins:
   - git-revision-date
 nav:
   - index.md
+  - 1-vault-install.md
+  - 2-vault-configuration.md
+  - 3-application.md
+  - 4-external-secrets-operator.md
+  - 5-vault-configuration-operator.md
