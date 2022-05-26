@@ -57,7 +57,7 @@ vault login token=${ROOT_TOKEN}
 
 If all is OK, you should see.
 
-```bash
+<pre>
 Success! You are now authenticated. The token information displayed below
 is already stored in the token helper. You do NOT need to run "vault login"
 again. Future Vault requests will automatically use this token.
@@ -71,19 +71,20 @@ token_renewable      false
 token_policies       ["root"]
 identity_policies    []
 policies             ["root"]
-```
+</pre>
 
 We can check vault quorum is OK.
 
 ```bash
 vault operator raft list-peers
-
+```
+<pre>
 Node       Address                        State       Voter
 ----       -------                        -----       -----
 vault-0    vault-0.vault-internal:8201    leader      true
 vault-1    vault-1.vault-internal:8201    follower    true
 vault-2    vault-2.vault-internal:8201    follower    true
-```
+</pre>
 
 If you browse to the Web UI you should be able to login using your token as well.
 
@@ -118,7 +119,8 @@ Change `dn`'s to suit your ldap configuration, enable auth login for vault.
 
 ```bash
 vault auth enable ldap
-
+```
+```bash
 vault write auth/ldap/config \
   url="ldap://ipa.ipa.svc.cluster.local:389" \
   binddn="uid=ldap_admin,cn=users,cn=accounts,dc=redhatlabs,dc=com" \
@@ -141,7 +143,7 @@ vault login -method=ldap username=mike
 
 If all is OK, you should see.
 
-```bash
+<pre>
 Password (will be hidden): 
 Success! You are now authenticated. The token information displayed below
 is already stored in the token helper. You do NOT need to run "vault login"
@@ -157,7 +159,7 @@ token_policies         ["default"]
 identity_policies      []
 policies               ["default"]
 token_meta_username    mike
-```
+</pre>
 
 ## Team Setup
 
@@ -173,7 +175,8 @@ Provision a team namespace.  The $TEAM_GROUP needs to match the LDAP `groupdn` f
 export TEAM_NAME=foo
 export TEAM_GROUP=student
 export PROJECT_NAME=${TEAM_NAME}-apps
-
+```
+```bash
 oc new-project ${PROJECT_NAME}
 ```
 
@@ -201,7 +204,8 @@ We need to give the application that our team will deploy a k8s service account 
 
 ```bash
 export APP_NAME=vault-quickstart
-
+```
+```bash
 oc -n ${PROJECT_NAME} create sa ${APP_NAME}
 oc adm policy add-cluster-role-to-user system:auth-delegator -z ${APP_NAME} -n ${PROJECT_NAME}
 ```
@@ -214,7 +218,8 @@ The second path in our policy allows CRUDL access for `auth/` under $BASE_DOMAIN
 
 ```bash
 vault login token=${ROOT_TOKEN}
-
+```
+```bash
 vault policy write $TEAM_GROUP-$PROJECT_NAME -<<EOF
 path "kv/data/{{identity.groups.names.$TEAM_GROUP.name}}/$PROJECT_NAME/*" {
     capabilities = [ "create", "update", "read", "delete", "list" ]
@@ -233,10 +238,12 @@ We need our list of user ID's to attach to the group. The Web UI makes this easy
 
 ```bash
 vault list identity/entity/id
+```
+<pre>
 Keys
 ----
 465ea512-80b4-ee7a-4ff2-b992149140b0
-```
+</pre>
 
 We need this and our $TEAM_GROUP-$PROJECT_NAME policy to add to our group in vault. The parameters `policies` and  `member_entity_ids` are *lists* so if we have multiple team members and projects we can include them and/or update this when needed.
 
@@ -258,13 +265,15 @@ To allow our application service account to read and list (RL) secrets, we use a
 
 ```bash
 export MOUNT_ACCESSOR=$(vault auth list -format=json | jq -r ".\"$BASE_DOMAIN-$PROJECT_NAME/\".accessor")
-
+```
+```bash
 vault policy write $BASE_DOMAIN-$PROJECT_NAME-kv-read -<< EOF
     path "kv/data/$TEAM_GROUP/{{identity.entity.aliases.$MOUNT_ACCESSOR.metadata.service_account_namespace}}/{{identity.entity.aliases.$MOUNT_ACCESSOR.metadata.service_account_name}}" {
         capabilities=["read","list"]
     }
 EOF
-
+```
+```bash
 vault policy read $BASE_DOMAIN-$PROJECT_NAME-kv-read
 ```
 
@@ -284,12 +293,14 @@ We can now create our vault config as our `student` team user `mike`.  Login to 
 
 ```bash
 oc login --server=https://api.${BASE_DOMAIN}:6443 -u mike
+```
+```bash
 vault login -method=ldap username=mike
 ```
 
 We should see the policy created by admin above.
 
-```bash
+<pre>
 Key                    Value
 ---                    -----
 token                  this-is-not-mikes-token
@@ -300,7 +311,7 @@ token_policies         ["default"]
 identity_policies      ["student-foo-apps"]
 policies               ["default" "student-foo-apps"]
 token_meta_username    mike
-```
+</pre>
 
 Let's create the $APP_NAME based auth role.
 
@@ -342,7 +353,8 @@ Which we can check.
 
 ```bash
 vault kv get kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
-
+```
+<pre>
 ============== Secret Path ==============
 kv/data/student/foo-apps/vault-quickstart
 
@@ -361,6 +373,6 @@ Key         Value
 app         vault-quickstart
 password    bar
 username    foo
-```
+</pre>
 
 Time to test out our application.

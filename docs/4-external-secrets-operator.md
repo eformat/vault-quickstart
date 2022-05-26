@@ -1,8 +1,6 @@
 # External Secrets Operator
 
 ```bash
--- External Secrets Operator
-
 cat <<EOF | oc apply -f-
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription

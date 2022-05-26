@@ -6,6 +6,8 @@ Login using our team user `mike`.
 
 ```bash
 oc login --server=https://api.${BASE_DOMAIN}:6443 -u mike
+```
+```bash
 vault login -method=ldap username=mike
 ```
 
@@ -39,10 +41,11 @@ Read version 1 of our KV secret.
 
 ```bash
 curl -sk -w"\n" https://$(oc get route $APP_NAME --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
-
+```
+<pre>
 # output
 {app=vault-quickstart, password=bar, username=foo}
-```
+</pre>
 
 Let's create a version 2 of our KV secret.
 
@@ -51,12 +54,14 @@ vault kv put kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME \
   app=$APP_NAME \
   username=cab \
   password=abc
-
+```
+```bash
 curl -sk -w"\n" https://$(oc get route $APP_NAME --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
-
+```
+<pre>
 # output
 {app=vault-quickstart, password=abc, username=cab}
-```
+</pre>
 
 Let's try and lookup another application's secret using our deployed app. This will **not be allowed** by ACL template policy.
 
@@ -64,7 +69,8 @@ Create the new secret for a new app in the same project.
 
 ```bash
 export APP_NAME=another-app
-
+```
+```bash
 vault kv put kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME \
   app=$APP_NAME \
   username=baz \
@@ -75,33 +81,37 @@ Now try to read it.
 
 ```bash
 curl -sk -w"\n" https://$(oc get route vault-quickstart --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
-
+```
+<pre>
 # error returned
 {"details":"Error id d47c2c4c-0893-4652-b2bd-f9dcb0ab8dfe-2","stack":""}
-```
+</pre>
 
 If we check the pod logs we see a `403 permission denied`
 
 ```bash
 oc logs $(oc get pods -l app=vault-quickstart -o name) | grep -A1 ERROR
-
+```
+<pre>
 # output
 ERROR: HTTP Request to /kv/student/foo-apps/another-app failed, error id: b0cbc303-0a76-4b0c-a276-509963bc5259-1
 org.jboss.resteasy.spi.UnhandledException: io.quarkus.vault.runtime.client.VaultClientException code=403 body={"errors":["1 error occurred:\n\t* permission denied\n\n"]}
-
-```
+</pre>
 
 Let's try and `Delete` a secret. This will **not be allowed** by ACL template policy.
 
 ```bash
 export APP_NAME=vault-quickstart
-
-curl -X DELETE -sk -w"\n" https://$(oc get route $APP_NAME --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
-
-{"details":"Error id cb28d8e2-4ff2-4a14-b110-884489b36e00-2","stack":""}
 ```
+```bash
+curl -X DELETE -sk -w"\n" https://$(oc get route $APP_NAME --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
+```
+<pre>
+# output
+{"details":"Error id cb28d8e2-4ff2-4a14-b110-884489b36e00-2","stack":""}
+</pre>
 
-Let's manully update the $BASE_DOMAIN-$PROJECT_NAME-kv-read policy with "delete" just to make sure.
+Let's manually update the $BASE_DOMAIN-$PROJECT_NAME-kv-read policy with "delete" just to make sure.
 
 ```bash
 capabilities=["read","list","delete"]
@@ -113,7 +123,8 @@ And retest.
 
 ```bash
 curl -X DELETE -sk -w"\n" https://$(oc get route $APP_NAME --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
-
+```
+<pre>
 # output
 Secret: student/foo-apps/vault-quickstart deleted
-```
+</pre>

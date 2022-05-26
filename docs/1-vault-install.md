@@ -82,10 +82,12 @@ EOF
 When OK, you should see.
 
 ```bash
-$ oc get pods -n openshift-cert-manager-operator
+oc get pods -n openshift-cert-manager-operator
+```
+<pre>
 NAME                                     READY   STATUS    RESTARTS   AGE
 cert-manager-operator-6cc4d48f84-8bcdc   1/1     Running   0          51s
-```
+</pre>
 
 ## Setup PKI
 
@@ -95,13 +97,15 @@ We need to initialize vault with a CA certificate. We are going to create a root
 mkdir ~/tmp/vault-certs && cd ~/tmp/vault-certs
 export CERT_ROOT=$(pwd)
 mkdir -p ${CERT_ROOT}/{root,intermediate}
-
+```
+```bash
 cd ${CERT_ROOT}/root/
 openssl genrsa -out ca.key 2048
 touch index.txt
 echo 1000 > serial
 mkdir -p newcerts
-
+```
+```bash
 cat <<EOF > openssl.cnf
 [ ca ]
 default_ca = CA_default
@@ -173,9 +177,9 @@ basicConstraints = critical,CA:TRUE
 subjectKeyIdentifier = hash
 authorityKeyIdentifier = keyid:always,issuer:always
 EOF
-
+```
+```bash
 openssl req -x509 -new -nodes -key ca.key -sha256 -days 1024 -out ca.crt -extensions v3_ca -config openssl.cnf
-
 cd ../intermediate
 openssl genrsa -out ca.key 2048
 openssl req -new -sha256 -key ca.key -out ca.csr -subj "/C=AU/ST=QLD/L=Brisbane/O=Acme Corp/OU=AC/CN=int.acme.corp"
@@ -201,7 +205,8 @@ spec:
   ca:
     secretName: intermediate
 EOF
-
+```
+```bash
 cat <<EOF | oc apply -f-
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -322,7 +327,7 @@ helm install vault hashicorp/vault -f values.yaml \
 
 When successful you should get.
 
-```bash
+<pre>
 NAME: vault
 LAST DEPLOYED: Wed May 25 16:44:35 2022
 NAMESPACE: hashicorp
@@ -330,18 +335,20 @@ STATUS: deployed
 REVISION: 1
 NOTES:
 Thank you for installing HashiCorp Vault!
-```
+</pre>
 
 And all pods are running but not ready (this is ok).
 
 ```bash
-$ oc get pods
+oc get pods
+```
+<pre>
 NAME                                   READY   STATUS    RESTARTS   AGE
 vault-0                                0/1     Running   0          20s
 vault-1                                0/1     Running   0          20s
 vault-2                                0/1     Running   0          20s
 vault-agent-injector-68df5cdbc-4jnrr   1/1     Running   0          20s
-```
+</pre>
 
 ## Unseal the vault
 
@@ -353,11 +360,11 @@ oc -n hashicorp exec -ti vault-0 -- vault operator init -key-threshold=1 -key-sh
 
 You should see the `root` token and unseal key printed out. Save these.
 
-```bash
+<pre>
 # use the root token to unseal
 Unseal Key 1: this-is-not-my-key
 Initial Root Token: this-is-not-my-token
-```
+</pre>
 
 Export these in our environment for now for ease of use.
 
@@ -377,13 +384,15 @@ done
 And all pods are running and now ready once you have unsealed all the vault nodes.
 
 ```bash
-$ oc get pods
+oc get pods
+```
+<pre>
 NAME                                   READY   STATUS    RESTARTS   AGE
 vault-0                                1/1     Running   0          5m40s
 vault-1                                1/1     Running   0          5m40s
 vault-2                                1/1     Running   0          5m40s
 vault-agent-injector-68df5cdbc-4jnrr   1/1     Running   0          5m40s
-```
+</pre>
 
 ## Vault CLI
 
