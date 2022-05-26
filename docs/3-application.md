@@ -94,8 +94,11 @@ oc logs $(oc get pods -l app=vault-quickstart -o name) | grep -A1 ERROR
 ```
 <pre>
 # output
-ERROR: HTTP Request to /kv/student/foo-apps/another-app failed, error id: b0cbc303-0a76-4b0c-a276-509963bc5259-1
-org.jboss.resteasy.spi.UnhandledException: io.quarkus.vault.runtime.client.VaultClientException code=403 body={"errors":["1 error occurred:\n\t* permission denied\n\n"]}
+ERROR: HTTP Request to /kv/student/foo-apps/another-app failed,
+  error id: b0cbc303-0a76-4b0c-a276-509963bc5259-1
+org.jboss.resteasy.spi.UnhandledException: 
+  io.quarkus.vault.runtime.client.VaultClientException code=403 
+  body={"errors":["1 error occurred:\n\t* permission denied\n\n"]}
 </pre>
 
 Let's try and `Delete` a secret. This will **not be allowed** by ACL template policy.
