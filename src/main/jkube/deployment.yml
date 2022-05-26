@@ -1,0 +1,9 @@
+spec:
+  template:
+    spec:
+      containers:
+        - env:
+          - name: BASE_DOMAIN
+            value: "${base.domain}"
+          - name: AUTH_MOUNT_PATH
+            value: "auth/${BASE_DOMAIN}-${KUBERNETES_NAMESPACE}"

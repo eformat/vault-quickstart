@@ -10,15 +10,15 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
 @Path("/")
-public class GreetingResource {
+public class VaultResource {
 
     @Inject
     VaultKVSecretEngine vaultKVSecretEngine;
 
     @GET
-    @Path("/kv/{ns}/{app-name}")
+    @Path("/kv/{group}/{ns}/{app-name}")
     @Produces(MediaType.TEXT_PLAIN)
-    public String getSecrets(@PathParam("ns") String ns, @PathParam("app-name") String appName) {
-        return vaultKVSecretEngine.readSecret(ns + "/" + appName).toString();
+    public String getSecrets(@PathParam("group") String group, @PathParam("ns") String ns, @PathParam("app-name") String appName) {
+        return vaultKVSecretEngine.readSecret(group + "/" + ns + "/" + appName).toString();
     }
 }
