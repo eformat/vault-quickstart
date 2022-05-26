@@ -4,17 +4,17 @@ This is a `How-to Guide`. It addresses how to get started with Hashicorp Vault o
 
 The Sections are organized as follows.
 
-```bash
-├── Vault Install                - Install a highly avaiable instance of Hasicorp Vault into OpenShift.
-├── Vault Configuration          - Configure Vault and set it up for our self-service usage.
-├── Application                  - Deploy a simple Quarkus Java test application that talks to Vault.
-├── External Secrets Operator    - Mount Vault key values as secrets using this operator.
-├── Vault Configuration Operator - GitOps for your Vault.
-```
+| Section                      | Description                                                           |
+|:-----------------------------|:----------------------------------------------------------------------|
+| Vault Install                | Install a highly available instance of Hashicorp Vault into OpenShift |
+| Vault Configuration          | Configure Vault and set it up for our self-service usage              |
+| Application                  | Deploy a simple Quarkus Java test application that talks to Vault     |
+| External Secrets Operator    | Mount Vault key values as secrets using this operator                 |
+| Vault Configuration Operator | GitOps for your Vault                                                 |
 
 ## Prerequisites
 
-- OpenShift Cluster (4.10+) with OLM.
+- OpenShift Cluster (4.10+) with OLM
 - cluster-admin login
 - helm3
 - openssl
