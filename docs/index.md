@@ -410,13 +410,12 @@ We will:
 - setup vault self-service where team users can manage their own KV per team/application
 - leverage Vault identities, vault ACL templates for ensuring apps can only read their own secrets
 - not use vault namespaces (they are an enterprise feature)
-- connect to vault with a project-scoped k8s service account
-- deploy an app with an application k8s service-account
-- application k8s service-account can read, list secrets for that app only
+- deploy an app and connect to vault with an application k8s service-account
+- application k8s service-account can read, list secrets for that app only using ACL's
 - users in the team group has full access to their team secrets
 - admins must configure
-  - project, project sa, vault auth, vault policy
-- users can configure
+  - project, vault policy
+- team users can configure
   - app secrets, app service accounts, vault config for these
 
 Paths in vault:
