@@ -555,10 +555,10 @@ FIXME - add userpass instructions
 
 ### Team Setup
 
-#### Kubernetes Auth - Admin
+#### Admin
 
 ```bash
-export TEAM_NAME=foo
+export TEAM_NAME=bar
 export TEAM_GROUP=student
 export PROJECT_NAME=${TEAM_NAME}
 
@@ -580,21 +580,27 @@ roleRef:
   name: admin
 EOF
 
-# we connect to vault using this sa
-oc -n ${PROJECT_NAME} create sa ${TEAM_NAME}-vault
-oc adm policy add-cluster-role-to-user system:auth-delegator -z ${TEAM_NAME}-vault -n ${PROJECT_NAME}
-
-export SA_TOKEN=$(oc -n ${PROJECT_NAME} get sa/${TEAM_NAME}-vault -o yaml | grep ${TEAM_NAME}-vault-token | awk '{print $3}')
-export SA_JWT_TOKEN=$(oc -n ${PROJECT_NAME} get secret $SA_TOKEN -o jsonpath="{.data.token}" | base64 --decode; echo)
-export SA_CA_CRT=$(oc -n ${PROJECT_NAME} get secret $SA_TOKEN -o jsonpath="{.data['ca\.crt']}" | base64 --decode; echo)
+oc adm policy add-cluster-role-to-user system:auth-delegator -z ${APP_NAME} -n ${PROJECT_NAME}
 
 vault login token=${ROOT_TOKEN}
-vault auth enable -path=$BASE_DOMAIN-${PROJECT_NAME} kubernetes
 
-vault write auth/$BASE_DOMAIN-${PROJECT_NAME}/config \
-  token_reviewer_jwt="$SA_JWT_TOKEN" \
-  kubernetes_host="$(oc whoami --show-server)" \
-  kubernetes_ca_cert="$SA_CA_CRT"
+vault policy write $TEAM_GROUP-$PROJECT_NAME -<<EOF
+path "kv/data/{{identity.groups.names.$TEAM_GROUP.name}}/$PROJECT_NAME/*" {
+    capabilities = [ "create", "update", "read", "delete", "list" ]
+}
+path "auth/$BASE_DOMAIN-$PROJECT_NAME/*" {
+    capabilities = [ "create", "update", "read", "delete", "list" ]
+}
+EOF
+
+# these are lists policies, member_entity_ids 
+vault write identity/group name="$TEAM_GROUP" \
+     policies="student_foo,$TEAM_GROUP-$PROJECT_NAME" \
+     member_entity_ids=77b3550d-d610-afe2-e24a-588923b7a8b8 \
+     metadata=team="$TEAM_GROUP"
+     
+vault secrets enable -path=kv/ -version=2 kv
+vault auth enable -path=$BASE_DOMAIN-${PROJECT_NAME} kubernetes
 
 vault auth list
 export MOUNT_ACCESSOR=$(vault auth list -format=json | jq -r ".\"$BASE_DOMAIN-$PROJECT_NAME/\".accessor")
@@ -606,27 +612,11 @@ vault policy write $BASE_DOMAIN-$PROJECT_NAME-kv-read - << EOF
 EOF
 
 vault policy read $BASE_DOMAIN-$PROJECT_NAME-kv-read
-
-vault policy write $TEAM_GROUP_$PROJECT_NAME -<<EOF
-path "kv/data/{{identity.groups.names.$TEAM_GROUP.name}}/$PROJECT_NAME/*" {
-    capabilities = [ "create", "update", "read", "delete", "list" ]
-}
-path "auth/data/$BASE_DOMAIN-$PROJECT_NAME/role/*" {
-    capabilities = [ "create", "update", "read", "delete", "list" ]
-}
-EOF
-
-vault write identity/group name="$TEAM_GROUP" \
-     policies="$TEAM_GROUP_$PROJECT_NAME" \
-     member_entity_ids=77b3550d-d610-afe2-e24a-588923b7a8b8 \
-     metadata=team="$TEAM_GROUP"
-     
-vault secrets enable -path=kv/ -version=2 kv
 ```
 
 ![images/acl-policy.png](images/acl-policy.png)
 
-#### Team config - Non-Admin
+#### Non-Admin
 
 ```bash
 export APP_NAME=vault-quickstart
@@ -643,18 +633,20 @@ vault write auth/$BASE_DOMAIN-$PROJECT_NAME/role/$APP_NAME \
 vault kv put kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME \
   app=$APP_NAME \
   username=foo \
-  password=bar
+  password=baz
   
 vault kv get kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
 ```
 
-## Build
+## Application
+
+### Build
 
 ```bash
 mvn package -Dquarkus.package.type=fast-jar -DskipTests
 ```
 
-## Deploy
+### Deploy
 
 ```bash
 mvn oc:build oc:resource oc:apply \
@@ -662,7 +654,17 @@ mvn oc:build oc:resource oc:apply \
  -Dbase.domain=$BASE_DOMAIN
 ```
 
-## Test
+```bash
+export SA_TOKEN=$(oc -n ${PROJECT_NAME} get sa/${APP_NAME} -o yaml | grep ${APP_NAME}-token | awk '{print $3}')
+export SA_JWT_TOKEN=$(oc -n ${PROJECT_NAME} get secret $SA_TOKEN -o jsonpath="{.data.token}" | base64 --decode; echo)
+export SA_CA_CRT=$(oc -n ${PROJECT_NAME} get secret $SA_TOKEN -o jsonpath="{.data['ca\.crt']}" | base64 --decode; echo)
+vault write auth/$BASE_DOMAIN-${PROJECT_NAME}/config \
+  token_reviewer_jwt="$SA_JWT_TOKEN" \
+  kubernetes_host="$(oc whoami --show-server)" \
+  kubernetes_ca_cert="$SA_CA_CRT"
+```
+
+### Test
 
 V1 Secret
 
@@ -680,7 +682,7 @@ vault kv put kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME \
   username=cab \
   password=abc
 
-$ curl -sk -w"\n" https://$(oc get route $APP_NAME --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
+curl -sk -w"\n" https://$(oc get route $APP_NAME --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
 
 {app=vault-quickstart, password=abc, username=cab}
 ```
@@ -710,6 +712,192 @@ export APP_NAME=vault-quickstart
 curl -sk -w"\n" https://$(oc get route $APP_NAME --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
 
 {app=vault-quickstart, password=bar, username=foo}
+```
+
+Delete a secret (Not Allowed) ACL policy denies this to the app sa 
+
+```bash
+curl -X DELETE -sk -w"\n" https://$(oc get route $APP_NAME --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
+
+{"details":"Error id cb28d8e2-4ff2-4a14-b110-884489b36e00-2","stack":""}
+```
+
+We could update the $BASE_DOMAIN-$PROJECT_NAME-kv-read policy with "delete" just to make sure
+
+![images/acl-delete-test.png](images/acl-delete-test.png)
+
+```bash
+capabilities=["read","list","delete"]
+
+curl -X DELETE -sk -w"\n" https://$(oc get route $APP_NAME --template='{{ .spec.host }}')/kv/$TEAM_GROUP/$PROJECT_NAME/$APP_NAME
+
+Secret: student/bar/vault-quickstart deleted
+```
+
+## External Secrets Operator
+
+```bash
+-- External Secrets Operator
+
+cat <<EOF | oc apply -f-
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  labels:
+    operators.coreos.com/external-secrets-operator.openshift-operators: ""
+  name: external-secrets-operator
+  namespace: openshift-operators
+spec:
+  channel: alpha
+  installPlanApproval: Automatic
+  name: external-secrets-operator
+  source: community-operators
+  sourceNamespace: openshift-marketplace
+  startingCSV: external-secrets-operator.v0.5.3
+EOF
+
+cat <<EOF | oc apply -n openshift-operators -f -
+apiVersion: operator.external-secrets.io/v1alpha1
+kind: OperatorConfig
+metadata:
+  name: cluster
+spec:
+  nodeSelector: {}
+  imagePullSecrets: []
+  podLabels: {}
+  resources: {}
+  leaderElect: false
+  fullnameOverride: ''
+  affinity: {}
+  prometheus:
+    enabled: false
+    service:
+      port: 8080
+  podSecurityContext: {}
+  scopedNamespace: ''
+  extraArgs: {}
+  securityContext: {}
+  rbac:
+    create: true
+  replicaCount: 1
+  nameOverride: ''
+  serviceAccount:
+    annotations: {}
+    create: true
+    name: ''
+  installCRDs: false
+  image:
+    pullPolicy: IfNotPresent
+    repository: ghcr.io/external-secrets/external-secrets
+    tag: ''
+  tolerations: []
+  extraEnv: []
+  priorityClassName: ''
+  podAnnotations: {}
+EOF
+
+
+-- https://external-secrets.io/v0.5.3/provider-hashicorp-vault/
+
+oc new-project foo
+
+export CA_BUNDLE=$(oc get secret vault-certs -n hashicorp -o json | jq -r '.data."ca.crt"')
+
+cat <<EOF | oc -n foo apply -f-
+apiVersion: external-secrets.io/v1beta1
+kind: ClusterSecretStore
+metadata:
+  name: vault-backend
+spec:
+  provider:
+    vault:
+      caBundle: $CA_BUNDLE
+      server: "https://vault-active.hashicorp.svc:8200"
+      version: "v2"
+      path: "secret"
+      auth:
+        # points to a secret that contains a vault token
+        # https://www.vaultproject.io/docs/auth/token
+        tokenSecretRef:
+          name: "vault-token"
+          namespace: "foo"
+          key: "token"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vault-token
+data:
+  token: <base64-this-is-not-my-token>
+EOF
+ 
+vault write systems/example username=systems@foo.net password=foobarbaz
+vault read systems/example
+
+cat <<EOF | oc -n foo apply -f-
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: vault-example
+spec:
+  refreshInterval: "30s"
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: example-sync
+  data:
+  - secretKey: username
+    remoteRef:
+      key: systems/example
+      property: username
+  - secretKey: password
+    remoteRef:
+      key: systems/example
+      property: password
+EOF
+
+oc describe externalsecret.external-secrets.io/vault-example
+oc delete externalsecret.external-secrets.io/vault-example
+```
+
+## Vault Config Operator
+
+```bash
+cat <<EOF | oc apply -f-
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: vault-config-operator
+EOF
+
+cat <<EOF | oc create -f-
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  annotations:
+    olm.providedAPIs: AuthEngineMount.v1alpha1.redhatcop.redhat.io,DatabaseSecretEngineConfig.v1alpha1.redhatcop.redhat.io,DatabaseSecretEngineRole.v1alpha1.redhatcop.redhat.io,GitHubSecretEngineConfig.v1alpha1.redhatcop.redhat.io,GitHubSecretEngineRole.v1alpha1.redhatcop.redhat.io,KubernetesAuthEngineConfig.v1alpha1.redhatcop.redhat.io,KubernetesAuthEngineRole.v1alpha1.redhatcop.redhat.io,LDAPAuthEngineConfig.v1alpha1.redhatcop.redhat.io,PKISecretEngineConfig.v1alpha1.redhatcop.redhat.io,PKISecretEngineRole.v1alpha1.redhatcop.redhat.io,PasswordPolicy.v1alpha1.redhatcop.redhat.io,Policy.v1alpha1.redhatcop.redhat.io,QuaySecretEngineConfig.v1alpha1.redhatcop.redhat.io,QuaySecretEngineRole.v1alpha1.redhatcop.redhat.io,QuaySecretEngineStaticRole.v1alpha1.redhatcop.redhat.io,RabbitMQSecretEngineConfig.v1alpha1.redhatcop.redhat.io,RabbitMQSecretEngineRole.v1alpha1.redhatcop.redhat.io,RandomSecret.v1alpha1.redhatcop.redhat.io,SecretEngineMount.v1alpha1.redhatcop.redhat.io,VaultSecret.v1alpha1.redhatcop.redhat.io
+  generateName: vault-config-operator-
+  namespace: vault-config-operator
+spec: {}
+EOF
+
+cat <<EOF | oc apply -f-
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  labels:
+    operators.coreos.com/vault-config-operator.vault-config-operator: ""
+  name: vault-config-operator
+  namespace: vault-config-operator
+spec:
+  channel: alpha
+  installPlanApproval: Automatic
+  name: vault-config-operator
+  source: community-operators
+  sourceNamespace: openshift-marketplace
+  startingCSV: vault-config-operator.v0.5.0
+EOF
 ```
 
 ## References
