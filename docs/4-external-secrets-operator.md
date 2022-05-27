@@ -2,7 +2,9 @@
 
 The [External Secrets Operator](https://external-secrets.io/v0.5.3/provider-hashicorp-vault) lets you mount secrets from vault (and many other secret sources) into your k8s cluster and creates k8s secrets for your pods to mount.
 
-## Install the Operator
+## Admin
+
+### Install the Operator
 
 Login to OpenShift from the CLI using a `cluster-admin` user.
 
@@ -79,7 +81,7 @@ spec:
 EOF
 ```
 
-## Create a Cluster Secret Store
+### Create a Cluster Secret Store
 
 There are both cluster and namespaced scoped connections to the secret store aka vault in out case. We are going to setup a `ClusterSecretStore` for demonstration purposes. 
 
@@ -137,7 +139,9 @@ Events:
   Normal   Valid                  7s (x2 over 7s)    cluster-secret-store  store validated
 </pre>
 
-## Create an External Secret
+## Non-Admin
+
+### Create an External Secret
 
 Login using our team user `mike` and change context to our app project.
 
