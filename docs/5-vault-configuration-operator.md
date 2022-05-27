@@ -1,5 +1,21 @@
 # Vault Config Operator
 
+The [Vault Config Operator](https://github.com/redhat-cop/vault-config-operator) helps set up Vault Configurations. For an advanced guide on using it i higly recommend this [blog post](https://cloud.redhat.com/blog/how-to-secure-cloud-native-applications-with-hashicorp-vault-and-cert-manager).
+
+All of the `vault` commands we have been running so far can be turned into YAML configuration that we can get the vault config operator to apply to our OpenShift Clusters. This is pretty handy if combine with a GitOps tool like [ArgoCD](https://argo-cd.readthedocs.io/en/stable/).
+
+## Admin
+
+### Install the Operator
+
+Login to OpenShift from the CLI using a `cluster-admin` user.
+
+```bash
+oc login --server=https://api.${BASE_DOMAIN}:6443 -u <admin>
+```
+
+Create a namespace for the operator.
+
 ```bash
 cat <<EOF | oc apply -f-
 kind: Namespace
@@ -7,7 +23,11 @@ apiVersion: v1
 metadata:
   name: vault-config-operator
 EOF
+```
 
+Create the operator group.
+
+```bash
 cat <<EOF | oc create -f-
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
@@ -18,7 +38,11 @@ metadata:
   namespace: vault-config-operator
 spec: {}
 EOF
+```
 
+Create the subscription at cluster scope.
+
+```bash
 cat <<EOF | oc apply -f-
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
@@ -36,3 +60,13 @@ spec:
   startingCSV: vault-config-operator.v0.5.0
 EOF
 ```
+
+We should see.
+
+```bash
+oc get pods -n vault-config-operator
+```
+
+### Create configs
+
+**FIXME** - YAML for this `How-to Guide` - TBD.

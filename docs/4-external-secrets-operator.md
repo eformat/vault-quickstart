@@ -81,6 +81,18 @@ spec:
 EOF
 ```
 
+Check the pods.
+
+```bash
+oc get pods -n external-secrets
+```
+<pre>
+NAME                                                        READY   STATUS    RESTARTS   AGE
+cluster-external-secrets-7c6f476dff-xc5cb                   1/1     Running   0          4m
+cluster-external-secrets-cert-controller-6bdc94cfb9-hjhhx   1/1     Running   0          4m
+cluster-external-secrets-webhook-84778cf468-4tx2k           1/1     Running   0          4m
+</pre>
+
 ### Create a Cluster Secret Store
 
 There are both cluster and namespaced scoped connections to the secret store aka vault in out case. We are going to setup a `ClusterSecretStore` for demonstration purposes. 

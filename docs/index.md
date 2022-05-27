@@ -35,3 +35,4 @@ Handy links found along the way
 - [https://github.com/hashicorp/vault-guides.git](https://github.com/hashicorp/vault-guides.git)
 - [https://quarkiverse.github.io/quarkiverse-docs/quarkus-vault/dev/vault-auth.html#_kubernetes_authentication](https://quarkiverse.github.io/quarkiverse-docs/quarkus-vault/dev/vault-auth.html#_kubernetes_authentication)
 - [https://cert-manager.io/docs](https://cert-manager.io/docs)
+- [https://github.com/redhat-cop/vault-config-operator](https://github.com/redhat-cop/vault-config-operator)
