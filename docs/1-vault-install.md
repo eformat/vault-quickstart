@@ -311,7 +311,7 @@ EOF
 OK, lets install into `hashicorp` namespace.
 
 <p class="tip">
-⛷️ <b>TIP</b> ⛷️ - We override the tolerations for the vault server since we only have 2 worker nodes in our cluster and an HA deployment needs 3. This was we can run on all nodes incl. master
+⛷️ <b>TIP</b> ⛷️ - We override the tolerations for the vault server since we only have 2 worker nodes in our cluster and an HA deployment needs 3. This way we can run on all nodes incl. master
 </p>  
 
 Run the installer.

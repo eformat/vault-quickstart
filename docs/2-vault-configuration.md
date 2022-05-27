@@ -6,16 +6,16 @@
 ⛷️ <b>TIP</b> ⛷️ - Skip the background reading if you want, but at some point you will need it !
 </p>  
 
-For this demo, there are a few [recommended patterns](https://learn.hashicorp.com/tutorials/vault/namespace-structure?in=vault/recommended-patterns) and background reading on [ACL Policy templating](https://learn.hashicorp.com/tutorials/vault/policy-templating) that should be considered a MUST read. In particular watch the [Youtube Video](https://www.youtube.com/watch?v=zDnIqSB4tyA&t=1532s). Also checkout the [References](#references) links.
+For this demo, there are a few [recommended patterns](https://learn.hashicorp.com/tutorials/vault/namespace-structure?in=vault/recommended-patterns) and background reading on [ACL Policy templating](https://learn.hashicorp.com/tutorials/vault/policy-templating) that should be considered a MUST read. In particular watch the [Youtube Video](https://www.youtube.com/watch?v=zDnIqSB4tyA&t=1532s). Also checkout the [References](../#references) links.
 
 We will:
 
 - setup vault self-service where team users can manage their own key values on a per team/application basis
 - leverage Vault identities and vault ACL templates for ensuring that apps can only read their own secrets
 - we do not use vault namespaces (they are an enterprise feature)
-- deploy an app and connect it to vault with using an app k8s service-account
+- deploy an app and connect it to vault using an app k8s service-account
 - app k8s service-account can read, list secrets for that app only using ACL's
-- users in the team group has full access to their team secrets
+- users in the team group have full access to their team secrets
 - admins must configure
     - project, vault policy
 - team users can configure
@@ -180,7 +180,7 @@ export PROJECT_NAME=${TEAM_NAME}-apps
 oc new-project ${PROJECT_NAME}
 ```
 
-Bind out team via the team group so they are project `admin`'s.
+Bind our team via the team group so they are project `admin`'s.
 
 ```bash
 cat <<EOF | oc apply -f-
@@ -200,7 +200,7 @@ roleRef:
 EOF
 ```
 
-We need to give the application that our team will deploy a k8s service account that has permissions to authenticate to vault using the k8s authentication mechanism. This is a privileged action otherwise we could have let the user do it.
+We need to create a k8s service account for the application that our team will deploy. This service account will be used to authenticate to vault using the k8s authentication mechanism. By defult, this is a cluster admin privileged action - otherwise we could have let the user do it.
 
 ```bash
 export APP_NAME=vault-quickstart
@@ -212,9 +212,9 @@ oc adm policy add-cluster-role-to-user system:auth-delegator -z ${APP_NAME} -n $
 
 Now we can login to vault and create the ACL policy. There are two parts to the policy. 
 
-The first path in our policy uses an `ACL template`. This allows team users who are part of the $TEAM_GROUP (`student` in our case) to create `key-values` aka secrets, under the project specific path. The template is a type of membership check as the user must be part of the `student` group for them to CRUDL under this `kv/` path.
+The first path in our policy uses an `ACL template`. This allows team users who are part of the $TEAM_GROUP (`student` in our case) to create `key-value` data aka **secrets**, under the project specific path. The template is a type of membership check as the user must be part of the `student` group for them to CRUDL under this `kv/` path.
 
-The second path in our policy allows CRUDL access for `auth/` under $BASE_DOMAIN-$PROJECT_NAME. We use this to create k8s `config` that the application service account use to authenticate to vault. This is `cluster-project` specific hence the ath name.
+The second path in our policy allows CRUDL access for `auth/` under $BASE_DOMAIN-$PROJECT_NAME. We use this to create k8s `config` that the application service account may use to authenticate to vault. This is `cluster-project` specific.
 
 ```bash
 vault login token=${ROOT_TOKEN}
