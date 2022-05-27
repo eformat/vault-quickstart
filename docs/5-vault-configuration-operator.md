@@ -1,6 +1,6 @@
 # Vault Config Operator
 
-The [Vault Config Operator](https://github.com/redhat-cop/vault-config-operator) helps set up Vault Configurations. For an advanced guide on using it i higly recommend this [blog post](https://cloud.redhat.com/blog/how-to-secure-cloud-native-applications-with-hashicorp-vault-and-cert-manager).
+The [Vault Config Operator](https://github.com/redhat-cop/vault-config-operator) helps set up Vault Configurations. For an advanced guide i highly recommend this [blog post](https://cloud.redhat.com/blog/how-to-secure-cloud-native-applications-with-hashicorp-vault-and-cert-manager).
 
 All of the `vault` commands we have been running so far can be turned into YAML configuration that we can get the vault config operator to apply to our OpenShift Clusters. This is pretty handy if combine with a GitOps tool like [ArgoCD](https://argo-cd.readthedocs.io/en/stable/).
 
@@ -69,4 +69,4 @@ oc get pods -n vault-config-operator
 
 ### Create configs
 
-**FIXME** - YAML for this `How-to Guide` - TBD.
+**FIXME** - YAML/Kustomize configs for this `How-to Guide` - TBD.
