@@ -95,7 +95,7 @@ cluster-external-secrets-webhook-84778cf468-4tx2k           1/1     Running   0 
 
 ### Create a Cluster Secret Store
 
-There are both cluster and namespaced scoped connections to the secret store aka vault in out case. We are going to setup a `ClusterSecretStore` for demonstration purposes. 
+There are both cluster and namespaced scoped connections to the secret store aka vault in our case. We are going to setup a `ClusterSecretStore` for demonstration purposes. 
 
 If you want finer grained security you can narrow this scope down to project based auth (ldap, k8s auth for example). See the `Authentication` section in the [vault external secret documentation](https://external-secrets.io/v0.5.3/provider-hashicorp-vault/#authentication).
 
