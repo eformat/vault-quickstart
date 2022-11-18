@@ -277,9 +277,9 @@ server:
       listener "tcp" {
         address = "[::]:8200"
         cluster_address = "[::]:8201"
-        tls_cert_file = "/vault/userconfig/vault-server-tls/vault.crt"
-        tls_key_file  = "/vault/userconfig/vault-server-tls/vault.key"
-        tls_client_ca_file = "/vault/userconfig/vault-server-tls/vault.ca"
+        tls_cert_file = "/etc/vault-tls/vault-certs/tls.crt"
+        tls_key_file = "/etc/vault-tls/vault-certs/tls.key"
+        tls_client_ca_file = "/etc/vault-tls/vault-certs/ca.crt"
       }
       storage "file" {
         path = "/vault/data"
