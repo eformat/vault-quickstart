@@ -273,6 +273,14 @@ server:
     VAULT_TLS_SERVER_NAME:
   standalone:
     enabled: false
+    config: |
+      listener "tcp" {
+        address = "[::]:8200"
+        cluster_address = "[::]:8201"
+        tls_cert_file = "/vault/userconfig/vault-server-tls/vault.crt"
+        tls_key_file  = "/vault/userconfig/vault-server-tls/vault.key"
+        tls_client_ca_file = "/vault/userconfig/vault-server-tls/vault.ca"
+      }
   auditStorage:
     enabled: true
     size: 5Gi
