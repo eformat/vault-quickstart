@@ -281,6 +281,9 @@ server:
         tls_key_file  = "/vault/userconfig/vault-server-tls/vault.key"
         tls_client_ca_file = "/vault/userconfig/vault-server-tls/vault.ca"
       }
+      storage "file" {
+        path = "/vault/data"
+      }      
   auditStorage:
     enabled: true
     size: 5Gi
