@@ -39,7 +39,7 @@ cat <<EOF | oc apply -f-
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: openshift-cert-manager-operator
+  name: cert-manager-operator
 EOF
 ```
 
@@ -51,10 +51,12 @@ apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
   annotations:
-    olm.providedAPIs: CertManager.v1alpha1.config.openshift.io,CertManager.v1alpha1.operator.openshift.io,Certificate.v1.cert-manager.io,CertificateRequest.v1.cert-manager.io,Challenge.v1.acme.cert-manager.io,ClusterIssuer.v1.cert-manager.io,Issuer.v1.cert-manager.io,Order.v1.acme.cert-manager.io
-  generateName: openshift-cert-manager-operator-
-  namespace: openshift-cert-manager-operator
-spec: {}
+    olm.providedAPIs: CertManager.v1alpha1.operator.openshift.io,Certificate.v1.cert-manager.io,CertificateRequest.v1.cert-manager.io,Challenge.v1.acme.cert-manager.io,ClusterIssuer.v1.cert-manager.io,Issuer.v1.cert-manager.io,Order.v1.acme.cert-manager.io
+  generateName: cert-manager-operator-
+  namespace: cert-manager-operator
+spec:
+  targetNamespaces:
+  - cert-manager-operator
 EOF
 ```
 
@@ -68,25 +70,24 @@ metadata:
   labels:
     operators.coreos.com/openshift-cert-manager-operator.openshift-cert-manager-operator: ''
   name: openshift-cert-manager-operator
-  namespace: openshift-cert-manager-operator
+  namespace: cert-manager-operator
 spec:
-  channel: tech-preview
+  channel: stable-v1
   installPlanApproval: Automatic
   name: openshift-cert-manager-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-  startingCSV: openshift-cert-manager.v1.7.1
 EOF
 ```
 
 When OK, you should see.
 
 ```bash
-oc get pods -n openshift-cert-manager-operator
+oc get pods -n cert-manager-operator
 ```
 <pre>
-NAME                                     READY   STATUS    RESTARTS   AGE
-cert-manager-operator-6cc4d48f84-8bcdc   1/1     Running   0          51s
+NAME                                                       READY   STATUS    RESTARTS   AGE
+cert-manager-operator-controller-manager-86bc8d6df-f7wzn   2/2     Running   0          2m22s
 </pre>
 
 ## Setup PKI
@@ -249,22 +250,24 @@ Create a default values file:
 ```bash
 mkdir -p ${CERT_ROOT}/vault && cd ${CERT_ROOT}/vault
 cat <<EOF > values.yaml
+enabled: true
 global:
   tlsDisable: false
   openshift: true
 injector:
+  enabled: false
   image:
     repository: "registry.connect.redhat.com/hashicorp/vault-k8s"
-    tag: "0.16.0-ubi"
+    tag: "1.1.0-ubi"
   agentImage:
     repository: "registry.connect.redhat.com/hashicorp/vault"
-    tag: "1.10.3-ubi"
+    tag: "1.12.1-ubi"
 ui:
   enabled: true
 server:
   image:
     repository: "registry.connect.redhat.com/hashicorp/vault"
-    tag: "1.10.3-ubi"
+    tag: "1.12.1-ubi"
   route:
     enabled: true
     host:
@@ -272,7 +275,7 @@ server:
     VAULT_CACERT: "/etc/vault-tls/vault-certs/ca.crt"
     VAULT_TLS_SERVER_NAME:
   standalone:
-    enabled: false
+    enabled: true
     config: |
       ui = true
       listener "tcp" {
@@ -293,7 +296,7 @@ server:
       name: "vault-certs"
       path: "/etc/vault-tls"
   ha:
-    enabled: true
+    enabled: false
     raft:
       enabled: true
       setNodeId: true
@@ -317,14 +320,13 @@ server:
         service_registration "kubernetes" {}
   service:
     enabled: true
+  tolerations[0]:
+    operator: Exists
+    effect: NoSchedule
 EOF
 ```
 
 OK, lets install into `hashicorp` namespace.
-
-<p class="tip">
-⛷️ <b>TIP</b> ⛷️ - We override the tolerations for the vault server since we only have 2 worker nodes in our cluster and an HA deployment needs 3. This way we can run on all nodes incl. master
-</p>  
 
 Run the installer.
 
@@ -332,7 +334,6 @@ Run the installer.
 helm install vault hashicorp/vault -f values.yaml \
     --set server.route.host=$VAULT_ROUTE \
     --set server.extraEnvironmentVars.VAULT_TLS_SERVER_NAME=$VAULT_ROUTE \
-    --set server.tolerations[0].operator=Exists,server.tolerations[0].effect=NoSchedule \
     --namespace hashicorp \
     --wait
 ```
@@ -355,11 +356,8 @@ And all pods are running but not ready (this is ok).
 oc get pods
 ```
 <pre>
-NAME                                   READY   STATUS    RESTARTS   AGE
-vault-0                                0/1     Running   0          20s
-vault-1                                0/1     Running   0          20s
-vault-2                                0/1     Running   0          20s
-vault-agent-injector-68df5cdbc-4jnrr   1/1     Running   0          20s
+NAME      READY   STATUS    RESTARTS   AGE
+vault-0   0/1     Running   0          20s
 </pre>
 
 ## Unseal the vault
@@ -385,12 +383,10 @@ export ROOT_TOKEN=this-is-not-my-token
 export UNSEAL_KEY=this-is-not-my-key
 ```
 
-Unseal each node in the cluster.
+Unseal the node in the cluster.
 
 ```bash
-for x in `seq 0 2`; do
-  oc -n hashicorp exec -ti vault-$x -- vault operator unseal $UNSEAL_KEY
-done
+oc -n hashicorp exec -ti vault-0 -- vault operator unseal $UNSEAL_KEY
 ```
 
 And all pods are running and now ready once you have unsealed all the vault nodes.
@@ -401,9 +397,6 @@ oc get pods
 <pre>
 NAME                                   READY   STATUS    RESTARTS   AGE
 vault-0                                1/1     Running   0          5m40s
-vault-1                                1/1     Running   0          5m40s
-vault-2                                1/1     Running   0          5m40s
-vault-agent-injector-68df5cdbc-4jnrr   1/1     Running   0          5m40s
 </pre>
 
 ## Vault CLI
@@ -411,7 +404,7 @@ vault-agent-injector-68df5cdbc-4jnrr   1/1     Running   0          5m40s
 Grab the [vault cli](https://learn.hashicorp.com/tutorials/vault/getting-started-install?in=vault/getting-started) 
 
 ```bash
-wget https://releases.hashicorp.com/vault/1.10.3/vault_1.10.3_linux_amd64.zip
-unzip vault_1.10.3_linux_amd64.zip
+wget https://releases.hashicorp.com/vault/1.14.1/vault_1.14.1_linux_amd64.zip
+unzip vault_1.14.1_linux_amd64.zip
 sudo mv vault /usr/local/bin/vault && sudo chmod 755 /usr/local/bin/vault
 ```
